@@ -23,16 +23,20 @@ public class PlayerController : MonoBehaviour
 
     public int equipedWeapon = 0;
     public List<GameObject> weaponModels = new List<GameObject>();
+    public LayerMask attackLayerMask;
 
+    private Vector3 targetForward; //Это целевое значение поворота меша игрока, к которому он будет плавно поворачиваться лерпом
     void Start()
     {
         animator = playerMesh.GetComponent<Animator>();
         characterController = GetComponent<CharacterController>();
+        targetForward = -playerMesh.transform.forward; 
     }
 
     void Update()
     {
         #region CameraAndMovement
+        
         Cursor.visible = cursorVisible;     
         if (cameraCanMove)
         {
@@ -56,7 +60,8 @@ public class PlayerController : MonoBehaviour
         characterController.Move(moveVector * moveSpeedModifier * Time.deltaTime);
         animator.SetFloat("Velocity", Mathf.Lerp(animator.GetFloat("Velocity"), moveVector.magnitude * moveSpeedModifier, Time.deltaTime * 20.0f));
 
-        if (moveVector.magnitude > 0) playerMesh.transform.forward = -Vector3.Lerp(-playerMesh.transform.forward, moveVector, Time.deltaTime * turningSpeed);
+        if (moveVector.magnitude > 0) targetForward = moveVector;
+        playerMesh.transform.forward = -Vector3.Lerp(-playerMesh.transform.forward, targetForward, Time.deltaTime * turningSpeed);
         #endregion CameraAndMovement
 
         #region Weapons
@@ -79,9 +84,28 @@ public class PlayerController : MonoBehaviour
             if (Input.GetButtonDown("Attack"))
             { 
                 animator.SetTrigger("Stab");
+                targetForward = new Vector3(Camera.main.transform.forward.x, 0, Camera.main.transform.forward.z).normalized;
+                //-Vector3.Lerp(-playerMesh.transform.forward, moveVector, Time.deltaTime * turningSpeed);
             }
         }
+        
         #endregion weapons
+    }
+
+    public void Attack()
+    {
+        Ray ray = new Ray(transform.position+Vector3.up, Camera.main.transform.forward);
+        Debug.DrawRay(transform.position+Vector3.up, Camera.main.transform.forward, Color.red, 0.5f);
+        if (Physics.Raycast(ray, out RaycastHit hit, 2.0f, attackLayerMask))
+        {
+            Debug.Log(hit.collider.gameObject.name);
+            if (hit.collider.gameObject.tag == "Victim")
+            {
+                Victim victim = hit.collider.gameObject.GetComponent<Victim>();
+                victim.GetHit(60.0f);
+            }
+        }
+        
     }
 
 
